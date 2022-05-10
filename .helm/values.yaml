@@ -1,0 +1,15 @@
+haproxy:
+  replicas:
+    _default: 3
+
+resources:
+  haproxy:
+    memory:
+      requests:
+        _default: 100Mi
+        paraphrase-production: 1000Mi
+      limits:
+        _default: 1000Mi
+    cpu:
+      requests:
+        _default: 50m

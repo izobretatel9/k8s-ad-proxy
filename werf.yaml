@@ -1,0 +1,5 @@
+configVersion: 1
+project: ad-proxy
+---
+image: haproxy
+from: haproxy:2.2.20-alpine

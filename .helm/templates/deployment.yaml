@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ pluck .Values.werf.env .Values.haproxy.replicas | first | default .Values.haproxy.replicas._default }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+      annotations:
+        checksum/haproxy-config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: {{ .Chart.Name }}
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+      - name: cr.yandex
+      containers:
+        - name: haproxy
+          image: {{ .Values.werf.image.haproxy }}
+          command:
+            - /usr/local/sbin/haproxy
+            - -f
+            - /config/haproxy.conf
+{{- include "haproxy_resources" . | indent 10 }}
+          ports:
+            - name: web
+              containerPort: 389
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: web
+            initialDelaySeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: web
+            initialDelaySeconds: 30
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Chart.Name }}-config
